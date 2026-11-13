@@ -3,8 +3,56 @@
   <head>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>dev</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <title>CityQuiz – find the cities on the map</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <style>
+      /* ── Bas ─────────────────────────────────── */
+      *, *::before, *::after { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        padding: 0;
+        overscroll-behavior: none;
+        -webkit-text-size-adjust: 100%;
+        touch-action: manipulation;
+        font-family: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+        color: #292524;
+      }
+
+      #root {
+        width: 100vw;
+        height: 100vh;
+      }
+
+      /* ── Karta ─────────────────────────────────── */
+      .map-container {
+        touch-action: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+
+      /* ── Responsiv tabell ──────────────────────── */
+      @media (max-width: 480px) {
+        .result-table th,
+        .result-table td {
+          font-size: 12px !important;
+          padding: 6px 6px !important;
+        }
+        .result-table .city-cell {
+          font-size: 11px !important;
+          word-break: break-word;
+        }
+        .result-table .country-label {
+          display: block;
+          font-size: 10px;
+        }
+      }
+    </style>
   </head>
   <body>
     <div id="root"></div>

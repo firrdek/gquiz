@@ -1,3 +1,5 @@
+/* All basic styling is in index.html <style> block.
+   This file is kept to ensure the CSS import chain works. */
 body {
   margin: 0;
   padding: 0;
