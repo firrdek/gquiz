@@ -54,28 +54,6 @@ function StartPage() {
       }}
     >
       <div style={cardGrid}>
-        <h1
-          style={{
-            textAlign: 'center',
-            fontSize: 32,
-            color: '#f5f3ef',
-            margin: '0 0 8px',
-            fontWeight: 700,
-          }}
-        >
-          gquiz
-        </h1>
-        <p
-          style={{
-            textAlign: 'center',
-            fontSize: 14,
-            color: theme.textSecondary,
-            margin: '0 0 24px',
-          }}
-        >
-          Choose an app
-        </p>
-
         {/* CityQuiz card */}
         <a
           href="#cityquiz"
