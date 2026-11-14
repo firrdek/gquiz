@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
-    <title>CityQuiz – find the cities on the map</title>
+    <title>gquiz</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" />
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
     <link
@@ -34,6 +34,25 @@
       .map-container {
         touch-action: none;
         -webkit-tap-highlight-color: transparent;
+      }
+
+      /* ── Start page cards ──────────────────────── */
+      .app-card {
+        transition: transform 0.15s, box-shadow 0.15s;
+      }
+      .app-card:hover {
+        transform: scale(1.03);
+        box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+      }
+
+      @media (max-width: 640px) {
+        .card-grid {
+          padding: 16px;
+          gap: 16px;
+        }
+        .card-grid h1 {
+          font-size: 26px;
+        }
       }
 
       /* ── Responsiv tabell ──────────────────────── */
