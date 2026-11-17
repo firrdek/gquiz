@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import StartPage from './StartPage';
 import CityQuiz from './CityQuiz';
+import SnowRace from './SnowRace';
 
 function App() {
   const [hash, setHash] = useState(window.location.hash);
@@ -16,6 +17,10 @@ function App() {
   // Route to CityQuiz on #cityquiz or #share=...
   if (h === '#cityquiz' || hash.startsWith('#share=')) {
     return <CityQuiz />;
+  }
+
+  if (h === '#snowrace') {
+    return <SnowRace />;
   }
 
   return <StartPage />;

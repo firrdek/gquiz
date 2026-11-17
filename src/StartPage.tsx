@@ -67,19 +67,18 @@ function StartPage() {
           </p>
         </a>
 
-        {/* Coming Soon card */}
-        <div
-          style={{
-            ...appCard,
-            opacity: 0.6,
-            cursor: 'default',
-            pointerEvents: 'none',
-          }}
+        {/* SnowRace card */}
+        <a
+          href="#snowrace"
+          className="app-card"
+          style={appCard}
         >
-          <div style={{ fontSize: 48, marginBottom: 12 }}>💀</div>
-          <h2 style={appCardTitle}>Coming Soon</h2>
-          <p style={appCardDescription}>Another app is on its way…</p>
-        </div>
+          <div style={{ fontSize: 48, marginBottom: 12 }}>🛷</div>
+          <h2 style={appCardTitle}>SnowRace</h2>
+          <p style={appCardDescription}>
+            Race a snowmobile through the spruce forest
+          </p>
+        </a>
       </div>
     </div>
   );
