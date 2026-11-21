@@ -1,5 +1,5 @@
 import type { LevelDef } from './levels';
-import { BRIDGE_HALF, buildScene, centerAt, lowerBound } from './scene';
+import { BRIDGE_HALF, buildScene, centerAt, extentAt, lanesAt, lowerBound, streamHalf, streamMid } from './scene';
 import type { Scene } from './scene';
 
 export const PLAYER_R = 11;
@@ -26,6 +26,7 @@ export interface Game {
   invuln: number;
   shake: number;
   camX: number;
+  yaw: number; // camera/sled direction in radians (0 = straight up the world y axis)
   time: number;
   speed: number;
   targetSpeed: number;
@@ -45,7 +46,7 @@ export function newGame(level: LevelDef, lw: number, lh: number): Game {
   return {
     level, scene: buildScene(level), lw, lh,
     x: x0, y: 0, vx: 0, heading: 0, lean: 0,
-    lives: MAX_LIVES, invuln: 0, shake: 0, camX: x0,
+    lives: MAX_LIVES, invuln: 0, shake: 0, camX: x0, yaw: 0,
     time: 0, speed: level.startSpeed, targetSpeed: level.startSpeed,
     nextSpeedUp: 0, notice: 0, finishTime: null, flakes, spray: [],
   };
@@ -61,7 +62,13 @@ function hit(g: Game, bridgeX?: number) {
   g.shake = 0.3;
   g.vx = 0;
   g.heading = 0;
-  g.x = bridgeX ?? centerAt(g.level, g.y);
+  if (bridgeX !== undefined) {
+    g.x = bridgeX;
+  } else {
+    // respawn in the middle of the nearest trail
+    const lanes = lanesAt(g.level, g.y);
+    g.x = lanes.reduce((a, l) => (Math.abs(l.c - g.x) < Math.abs(a - g.x) ? l.c : a), lanes[0].c);
+  }
 }
 
 function collide(g: Game): boolean {
@@ -100,20 +107,22 @@ export function update(g: Game, dt: number, steerIn: number): Phase {
   else g.speed += (g.targetSpeed - g.speed) * Math.min(1, dt * 1.5);
 
   // Snow-drift inertia: heading lags the input, lateral velocity lags the heading
-  g.heading += (steer * 0.65 - g.heading) * Math.min(1, dt * 2.4);
+  g.heading += (steer * 0.8 - g.heading) * Math.min(1, dt * 3);
   const targetVx = Math.sin(g.heading) * g.speed * 1.15;
-  g.vx += (targetVx - g.vx) * Math.min(1, dt * 1.8);
+  g.vx += (targetVx - g.vx) * Math.min(1, dt * 2.4);
   g.x += g.vx * dt;
   g.y += g.speed * dt;
   // rider leans into the turn, a little behind the steering input
   g.lean += (steer - g.lean) * Math.min(1, dt * 4);
 
   const c = centerAt(g.level, g.y);
-  const maxOff = 205;
+  const maxOff = extentAt(g.level, g.y);
   if (g.x > c + maxOff) { g.x = c + maxOff; g.vx = Math.min(g.vx, 0); }
   if (g.x < c - maxOff) { g.x = c - maxOff; g.vx = Math.max(g.vx, 0); }
 
   g.camX += (g.x - g.camX) * Math.min(1, dt * 5);
+  // the camera turns with the sled so it is always seen from straight behind
+  g.yaw += (Math.atan2(g.vx, g.speed) - g.yaw) * Math.min(1, dt * 6);
   g.invuln = Math.max(0, g.invuln - dt);
   g.shake = Math.max(0, g.shake - dt);
 
@@ -136,11 +145,11 @@ export function update(g: Game, dt: number, steerIn: number): Phase {
   if (!finishing && g.invuln <= 0 && collide(g)) hit(g);
 
   if (!finishing) {
-    for (const s of g.scene.streams) {
-      if (!s.hit && g.y >= s.y0 && g.y <= s.y1) {
-        if (Math.abs(g.x - s.bx) > BRIDGE_HALF) {
-          s.hit = true;
-          if (g.invuln <= 0) hit(g, s.bx);
+    if (g.invuln <= 0) {
+      for (const s of g.scene.streams) {
+        if (Math.abs(g.y - streamMid(s, g.x)) < streamHalf(s, g.x) && Math.abs(g.x - s.bx) > BRIDGE_HALF) {
+          hit(g, s.bx);
+          break;
         }
       }
     }

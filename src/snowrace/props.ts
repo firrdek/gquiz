@@ -41,28 +41,36 @@ export function drawDog(ctx: Ctx, x: number, y: number, s: number, t: number) {
   r(4 + wag, -3, 3, 1, '#a8713a'); r(6 + wag, -5, 1, 2, '#a8713a');
 }
 
-// Pixel bridge across a stream; screen-space rectangle between near/far edges
-export function drawBridge(ctx: Ctx, xl: number, xr: number, yTop: number, yBot: number) {
-  const h = yBot - yTop;
-  const w = xr - xl;
-  const n = 9;
-  const ph = h / n;
-  ctx.fillStyle = '#14100e';
-  ctx.fillRect(Math.round(xl), Math.round(yTop + 4), Math.round(w), Math.round(h));
+// Pixel-style plank bridge across a stream, built in world space and projected.
+export function drawBridge(
+  ctx: Ctx,
+  pr: (x: number, y: number) => { x: number; y: number },
+  bx: number,
+  ym: number,
+  hw: number,
+  half: number,
+) {
+  const quad = (c: string, x0: number, y0: number, x1: number, y1: number) => {
+    const pts = [pr(x0, y0), pr(x1, y0), pr(x1, y1), pr(x0, y1)];
+    ctx.fillStyle = c;
+    ctx.beginPath();
+    pts.forEach((p, i) => (i === 0 ? ctx.moveTo(Math.round(p.x), Math.round(p.y)) : ctx.lineTo(Math.round(p.x), Math.round(p.y))));
+    ctx.closePath();
+    ctx.fill();
+  };
+  const ya = ym - hw;
+  const yb = ym + hw;
+  quad('#14100e', bx - half, ya + 3, bx + half, yb + 3);
+  const n = 10;
+  const ph = (yb - ya) / n;
   for (let i = 0; i < n; i++) {
-    const y0 = Math.round(yTop + i * ph);
-    ctx.fillStyle = i % 2 ? '#5a4a3d' : '#46382d';
-    ctx.fillRect(Math.round(xl), y0, Math.round(w), Math.max(1, Math.round(ph) - 2));
-    ctx.fillStyle = '#6d5a4a';
-    ctx.fillRect(Math.round(xl), y0, Math.round(w), 1);
+    quad(i % 2 ? '#5a4a3d' : '#46382d', bx - half, ya + i * ph, bx + half, ya + (i + 1) * ph - 2);
+    quad('#6d5a4a', bx - half, ya + i * ph, bx + half, ya + i * ph + 2);
   }
-  const rw = Math.max(3, Math.round(w * 0.07));
-  ctx.fillStyle = '#2a211b';
-  ctx.fillRect(Math.round(xl) - rw, Math.round(yTop) - 3, rw, Math.round(h) + 6);
-  ctx.fillRect(Math.round(xr), Math.round(yTop) - 3, rw, Math.round(h) + 6);
-  ctx.fillStyle = '#f2f6f7';
-  ctx.fillRect(Math.round(xl) - rw, Math.round(yTop) - 3, rw, 3);
-  ctx.fillRect(Math.round(xr), Math.round(yTop) - 3, rw, 3);
+  quad('#2a211b', bx - half - 6, ya - 3, bx - half, yb + 3);
+  quad('#2a211b', bx + half, ya - 3, bx + half + 6, yb + 3);
+  quad('#f2f6f7', bx - half - 6, ya - 3, bx - half, ya + 3);
+  quad('#f2f6f7', bx + half, ya - 3, bx + half + 6, ya + 3);
 }
 
 export function drawFlag(ctx: Ctx, x: number, y: number, s: number, t: number) {

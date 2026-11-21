@@ -58,7 +58,7 @@ type Item = { y: number; kind: 0 | 1 | 2 | 3 | 4 | 5; i: number };
 
 export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
   const { lw, lh, scene } = g;
-  const cam = makeCam(g.camX, g.y, lw, lh);
+  const cam = makeCam(g.camX, g.y, g.yaw, lw, lh);
   const t = now / 1000;
 
   ctx.save();
@@ -69,8 +69,8 @@ export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
   drawGround(ctx, g, cam);
 
   // depth-sorted objects (far first)
-  const yMin = g.y - 330;
-  const yMax = g.y + 1900;
+  const yMin = g.y - 400;
+  const yMax = g.y + 2300;
   const items: Item[] = [{ y: g.y, kind: 2, i: 0 }];
   for (let i = lowerBound(scene.trees, yMin); i < scene.trees.length && scene.trees[i].y < yMax; i++) {
     items.push({ y: scene.trees[i].y, kind: 0, i });
@@ -85,6 +85,15 @@ export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
   if (fy > yMin && fy < yMax) {
     items.push({ y: fy, kind: 5, i: 0 }, { y: fy, kind: 5, i: 1 });
   }
+  const dOf = (x: number, y: number) => project(cam, x, y).d;
+  for (const it of items) {
+    it.y = it.kind === 0 ? dOf(scene.trees[it.i].x, scene.trees[it.i].y)
+      : it.kind === 1 ? dOf(scene.rocks[it.i].x, scene.rocks[it.i].y)
+      : it.kind === 2 ? dOf(g.x, g.y)
+      : it.kind === 3 ? dOf(scene.fire.x, scene.fire.y)
+      : it.kind === 4 ? dOf(scene.dog.x, scene.dog.y)
+      : dOf(scene.clearing.x + (it.i === 0 ? -135 : 135), fy);
+  }
   items.sort((a, b) => b.y - a.y);
 
   for (const it of items) {
@@ -92,7 +101,7 @@ export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
       case 0: {
         const o = scene.trees[it.i];
         const p = project(cam, o.x, o.y);
-        if (p.y > -40 && p.y < lh + 140) drawTree(ctx, p.x, p.y, o.s * p.s, o.v);
+        if (p.y > -40 && p.y < lh + 160 && p.x > -120 && p.x < lw + 120) drawTree(ctx, p.x, p.y, o.s * p.s, o.v);
         break;
       }
       case 1: {
@@ -105,7 +114,7 @@ export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
         const blink = g.invuln > 0 && Math.floor(g.invuln * 12) % 2 === 0;
         if (blink) break;
         const p = project(cam, g.x, g.y);
-        drawSled(ctx, p.x, p.y, p.s, g.heading * 0.5 + Math.atan2(g.vx, g.speed) * 0.4, g.lean);
+        drawSled(ctx, p.x, p.y, p.s, (g.heading - g.yaw) * 0.35, g.lean);
         break;
       }
       case 3: {

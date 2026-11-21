@@ -1,112 +1,131 @@
-import { HALF, BRIDGE_HALF, centerAt } from './scene';
-import { groundY, project, scaleAt } from './camera';
+import { BRIDGE_HALF, HALF, centerAt, lanesAt, streamHalf, streamMid } from './scene';
+import { project } from './camera';
 import type { Cam } from './camera';
 import type { Game } from './engine';
 import { drawBridge } from './props';
 
 type Ctx = CanvasRenderingContext2D;
+type Pt = [number, number];
 
-export function drawGround(ctx: Ctx, g: Game, cam: Cam) {
-  const { lw, lh } = g;
-  const lvl = g.level;
-  const rows: number[] = [];
-  for (let s = -10; s <= lh + 30; s += 6) rows.push(s);
-  const wy = rows.map((s) => groundY(cam, s));
-  const sc = wy.map((y) => scaleAt(cam, y));
-  const px = (x: number, i: number) => cam.cx + (x - cam.x) * sc[i];
-
-  const bands: Array<[number, string]> = [[HALF + 420, '#dbe7ec'], [HALF + 40, '#e9f1f4'], [HALF + 6, '#f7fafb']];
-  for (const [w, color] of bands) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    rows.forEach((s, i) => {
-      const x = px(centerAt(lvl, wy[i]) - w, i);
-      if (i === 0) ctx.moveTo(x, s); else ctx.lineTo(x, s);
-    });
-    for (let i = rows.length - 1; i >= 0; i--) ctx.lineTo(px(centerAt(lvl, wy[i]) + w, i), rows[i]);
-    ctx.closePath();
-    ctx.fill();
-  }
-
-  // rolling snow: soft shaded waves across the snow
-  rows.forEach((s, i) => {
-    const y = wy[i];
-    const a = 0.5 + 0.5 * Math.sin(y / 85) * Math.cos(y / 230 + 1);
-    const c = centerAt(lvl, y);
-    const l = px(c - HALF - 420, i);
-    const r = px(c + HALF + 420, i);
-    ctx.fillStyle = `rgba(150,175,195,${(0.1 * a).toFixed(3)})`;
-    ctx.fillRect(l, s, r - l, 6);
-    const b = 0.5 + 0.5 * Math.sin(y / 53 + 2);
-    ctx.fillStyle = `rgba(255,255,255,${(0.14 * b * (1 - a)).toFixed(3)})`;
-    ctx.fillRect(l, s, r - l, 6);
+// Fill a world-space polygon
+function poly(ctx: Ctx, cam: Cam, fill: string, pts: Pt[]) {
+  ctx.fillStyle = fill;
+  ctx.beginPath();
+  pts.forEach(([x, y], i) => {
+    const p = project(cam, x, y);
+    if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
   });
+  ctx.closePath();
+  ctx.fill();
+}
 
+function drawSnow(ctx: Ctx, g: Game, cam: Cam, y0: number, y1: number) {
+  const { lw, lh } = g;
+  ctx.fillStyle = '#dde8ed';
+  ctx.fillRect(-20, -20, lw + 40, lh + 40);
+  // rolling snow: soft light and shadow waves across the whole ground
+  const x0 = g.x - 1100;
+  const x1 = g.x + 1100;
+  for (let y = Math.floor(y0 / 60) * 60; y < y1; y += 60) {
+    const a = Math.sin(y / 131) * Math.cos(y / 337 + 1);
+    const b = Math.sin(y / 77 + 2);
+    if (a > 0.15) poly(ctx, cam, `rgba(255,255,255,${(0.35 * a).toFixed(2)})`, [[x0, y], [x1, y], [x1, y + 60], [x0, y + 60]]);
+    else if (a < -0.15) poly(ctx, cam, `rgba(140,165,190,${(-0.16 * a).toFixed(2)})`, [[x0, y], [x1, y], [x1, y + 60], [x0, y + 60]]);
+    if (b > 0.6) poly(ctx, cam, 'rgba(255,255,255,0.12)', [[x0, y + 20], [x1, y + 20], [x1, y + 44], [x0, y + 44]]);
+  }
   // dunes
   for (const d of g.scene.dunes) {
-    if (d.y < wy[rows.length - 1] - 60 || d.y > wy[0] + 100) continue;
+    if (d.y < y0 || d.y > y1) continue;
     const p = project(cam, d.x, d.y);
-    if (p.y < -20 || p.y > lh + 40) continue;
+    if (p.y < -30 || p.y > lh + 60 || p.x < -150 || p.x > lw + 150) continue;
     const rx = d.rx * p.s;
-    const ry = rx * 0.28;
-    ctx.fillStyle = 'rgba(150,175,195,0.22)';
+    const ry = rx * 0.34;
+    ctx.fillStyle = 'rgba(150,175,195,0.24)';
     ctx.beginPath();
     ctx.ellipse(p.x + rx * 0.12, p.y + ry * 0.2, rx, ry, 0, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = d.tone > 0.5 ? 'rgba(255,255,255,0.75)' : 'rgba(250,253,255,0.55)';
+    ctx.fillStyle = d.tone > 0.5 ? 'rgba(255,255,255,0.8)' : 'rgba(250,253,255,0.6)';
     ctx.beginPath();
     ctx.ellipse(p.x - rx * 0.06, p.y - ry * 0.1, rx * 0.9, ry * 0.8, 0, 0, Math.PI * 2);
     ctx.fill();
   }
+}
 
-  // goal clearing
+function drawTrail(ctx: Ctx, g: Game, cam: Cam, y0: number, y1: number) {
+  const lvl = g.level;
+  const step = 36;
+  const start = Math.floor(y0 / step) * step;
+  for (const [grow, color] of [[30, '#e9f1f4'], [0, '#f8fbfc']] as Array<[number, string]>) {
+    for (let y = start; y < y1; y += step) {
+      const a = lanesAt(lvl, y);
+      const b = lanesAt(lvl, y + step);
+      const n = Math.max(a.length, b.length);
+      for (let k = 0; k < n; k++) {
+        const la = a[Math.min(k, a.length - 1)];
+        const lb = b[Math.min(k, b.length - 1)];
+        const ha = la.half + grow + 1;
+        const hb = lb.half + grow + 1;
+        poly(ctx, cam, color, [[la.c - ha, y], [la.c + ha, y], [lb.c + hb, y + step + 1], [lb.c - hb, y + step + 1]]);
+      }
+    }
+  }
+}
+
+function drawGoal(ctx: Ctx, g: Game, cam: Cam) {
+  const lvl = g.level;
   const cl = g.scene.clearing;
   ctx.fillStyle = '#f9fcfd';
   ctx.beginPath();
-  for (let a = 0; a <= 24; a++) {
-    const t = (a / 24) * Math.PI * 2;
+  for (let a = 0; a <= 28; a++) {
+    const t = (a / 28) * Math.PI * 2;
     const p = project(cam, cl.x + Math.cos(t) * cl.r, cl.y + Math.sin(t) * cl.r * 0.9);
     if (a === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
   }
   ctx.fill();
-
-  // finish line
-  const fa = project(cam, centerAt(lvl, lvl.length) - HALF, lvl.length);
-  const fb = project(cam, centerAt(lvl, lvl.length) + HALF, lvl.length);
-  const n = 12;
+  const cx = centerAt(lvl, lvl.length);
+  const n = 14;
+  const w = (HALF * 2) / n;
   for (let i = 0; i < n; i++) {
-    const x0 = fa.x + ((fb.x - fa.x) * i) / n;
-    const w = (fb.x - fa.x) / n;
-    const h = 8 * fa.s;
-    ctx.fillStyle = i % 2 ? '#1d2124' : '#f4f6f7';
-    ctx.fillRect(x0, fa.y - h, w + 1, h);
-    ctx.fillStyle = i % 2 ? '#f4f6f7' : '#1d2124';
-    ctx.fillRect(x0, fa.y, w + 1, h);
+    const x = cx - HALF + i * w;
+    poly(ctx, cam, i % 2 ? '#1d2124' : '#f4f6f7', [[x, lvl.length], [x + w, lvl.length], [x + w, lvl.length + 12], [x, lvl.length + 12]]);
+    poly(ctx, cam, i % 2 ? '#f4f6f7' : '#1d2124', [[x, lvl.length + 12], [x + w, lvl.length + 12], [x + w, lvl.length + 24], [x, lvl.length + 24]]);
   }
+}
 
-  // streams (dark water across the trail) with bridges
+function drawStreams(ctx: Ctx, g: Game, cam: Cam) {
+  const x0 = g.x - 1100;
+  const x1 = g.x + 1100;
   for (const s of g.scene.streams) {
-    const far = project(cam, 0, s.y1);
-    const near = project(cam, 0, s.y0);
-    if (near.y < -40 || far.y > lh + 40) continue;
-    ctx.fillStyle = '#e3edf0';
-    ctx.fillRect(-20, far.y - 4 * far.s, lw + 40, near.y - far.y + 8 * near.s);
-    ctx.fillStyle = '#2b3135';
-    ctx.fillRect(-20, far.y, lw + 40, near.y - far.y);
+    if (s.ym < g.y - 500 || s.ym > g.y + 2400) continue;
+    const xs: number[] = [];
+    for (let x = x0; x <= x1; x += 40) xs.push(x);
+    const band = (grow: number, color: string) => {
+      const top: Pt[] = xs.map((x) => [x, streamMid(s, x) + streamHalf(s, x) + grow]);
+      const bot: Pt[] = xs.map((x) => [x, streamMid(s, x) - streamHalf(s, x) - grow]).reverse() as Pt[];
+      poly(ctx, cam, color, [...top, ...bot]);
+    };
+    band(5, '#eef4f6'); // snowy banks
+    band(0, '#2b3135'); // water
+    // ripples
     ctx.strokeStyle = '#4a545a';
     ctx.lineWidth = 1.5;
-    for (let i = 1; i < 4; i++) {
-      const yy = far.y + ((near.y - far.y) * i) / 4;
+    for (const f of [-0.5, 0, 0.5]) {
       ctx.beginPath();
-      ctx.moveTo(-20, yy);
-      for (let xx = -20; xx < lw + 20; xx += 30) ctx.lineTo(xx + 15, yy + (xx % 60 === 0 ? -2 : 2));
+      xs.forEach((x, i) => {
+        const p = project(cam, x, streamMid(s, x) + streamHalf(s, x) * f + (i % 2 ? 3 : -3));
+        if (i === 0) ctx.moveTo(p.x, p.y); else ctx.lineTo(p.x, p.y);
+      });
       ctx.stroke();
     }
-    const mid = (s.y0 + s.y1) / 2;
-    const bl = project(cam, s.bx - BRIDGE_HALF, mid);
-    const br = project(cam, s.bx + BRIDGE_HALF, mid);
-    const bt = project(cam, s.bx, s.y1 + 14);
-    const bb = project(cam, s.bx, s.y0 - 14);
-    drawBridge(ctx, bl.x, br.x, bt.y, bb.y);
+    drawBridge(ctx, (x, y) => project(cam, x, y), s.bx, streamMid(s, s.bx), streamHalf(s, s.bx) + 16, BRIDGE_HALF);
   }
+}
+
+export function drawGround(ctx: Ctx, g: Game, cam: Cam) {
+  const y0 = g.y - 500;
+  const y1 = g.y + 2400;
+  drawSnow(ctx, g, cam, y0, y1);
+  drawTrail(ctx, g, cam, y0, y1);
+  drawGoal(ctx, g, cam);
+  drawStreams(ctx, g, cam);
 }
