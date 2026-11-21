@@ -1,5 +1,3 @@
-import { ORANGE } from './engine';
-
 type Ctx = CanvasRenderingContext2D;
 
 function tri(ctx: Ctx, fill: string, pts: Array<[number, number]>) {
@@ -11,7 +9,25 @@ function tri(ctx: Ctx, fill: string, pts: Array<[number, number]>) {
   ctx.fill();
 }
 
-export function drawTree(ctx: Ctx, x: number, y: number, s: number) {
+// Pixel-art helper: rectangles in a unit grid of size q anchored at (ox, oy)
+export function grid(ctx: Ctx, ox: number, oy: number, q: number) {
+  return (x: number, y: number, w: number, h: number, c: string) => {
+    ctx.fillStyle = c;
+    const x0 = Math.round(ox + x * q);
+    const y0 = Math.round(oy + y * q);
+    ctx.fillRect(x0, y0, Math.round(ox + (x + w) * q) - x0, Math.round(oy + (y + h) * q) - y0);
+  };
+}
+
+// Three spruce shades: 60% original, 20% and 20% slightly different
+const TREE_COLORS: Array<[string, string]> = [
+  ['#1f3d31', '#122a20'],
+  ['#25452f', '#16301f'],
+  ['#1b3a38', '#0f2827'],
+];
+
+export function drawTree(ctx: Ctx, x: number, y: number, s: number, v = 0) {
+  const [lit, dark] = TREE_COLORS[v];
   ctx.fillStyle = 'rgba(120,140,150,0.25)';
   ctx.beginPath();
   ctx.ellipse(x + 8 * s, y, 24 * s, 7 * s, 0, 0, Math.PI * 2);
@@ -23,9 +39,8 @@ export function drawTree(ctx: Ctx, x: number, y: number, s: number) {
     const w = (30 - i * 7) * s;
     const h = (46 - i * 4) * s;
     const apexY = baseY - h;
-    tri(ctx, '#1f3d31', [[x, apexY], [x - w, baseY], [x, baseY + 4 * s]]);
-    tri(ctx, '#122a20', [[x, apexY], [x + w, baseY], [x, baseY + 4 * s]]);
-    // snowy tip
+    tri(ctx, lit, [[x, apexY], [x - w, baseY], [x, baseY + 4 * s]]);
+    tri(ctx, dark, [[x, apexY], [x + w, baseY], [x, baseY + 4 * s]]);
     const f = i === 2 ? 0.42 : 0.2;
     tri(ctx, '#f2f6f7', [[x, apexY], [x - w * f, apexY + h * f], [x, apexY + h * f + 2 * s]]);
     tri(ctx, '#c9d6dc', [[x, apexY], [x + w * f, apexY + h * f], [x, apexY + h * f + 2 * s]]);
@@ -33,62 +48,20 @@ export function drawTree(ctx: Ctx, x: number, y: number, s: number) {
 }
 
 export function drawRock(ctx: Ctx, x: number, y: number, s: number) {
+  const q = 3.2 * s;
   ctx.fillStyle = 'rgba(120,140,150,0.3)';
   ctx.beginPath();
   ctx.ellipse(x + 6 * s, y, 20 * s, 6 * s, 0, 0, Math.PI * 2);
   ctx.fill();
-  tri(ctx, '#4a5156', [
-    [x - 16 * s, y], [x - 11 * s, y - 14 * s], [x + 4 * s, y - 19 * s], [x + 16 * s, y - 8 * s], [x + 15 * s, y],
-  ]);
-  tri(ctx, '#343a3e', [
-    [x + 4 * s, y - 19 * s], [x + 16 * s, y - 8 * s], [x + 15 * s, y], [x + 3 * s, y - 4 * s],
-  ]);
-  tri(ctx, '#f4f8f9', [
-    [x - 11 * s, y - 14 * s], [x + 4 * s, y - 19 * s], [x + 11 * s, y - 13 * s], [x - 2 * s, y - 10 * s],
-  ]);
-}
-
-export function drawSled(ctx: Ctx, x: number, y: number, angle: number) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.fillStyle = 'rgba(90,110,120,0.3)';
-  ctx.beginPath();
-  ctx.ellipse(4, 4, 20, 34, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.rotate(angle);
-  // rear track
-  ctx.fillStyle = '#23272a';
-  ctx.fillRect(-9, 6, 18, 24);
-  // skis
-  ctx.fillStyle = '#2e3337';
-  ctx.fillRect(-17, -38, 5, 34);
-  ctx.fillRect(12, -38, 5, 34);
-  ctx.fillStyle = '#f2f6f7';
-  ctx.fillRect(-17, -40, 5, 4);
-  ctx.fillRect(12, -40, 5, 4);
-  // body
-  tri(ctx, '#c4510f', [[-12, -32], [12, -32], [15, 12], [-15, 12]]);
-  tri(ctx, ORANGE, [[-9, -32], [9, -32], [12, 4], [-12, 4]]);
-  ctx.fillStyle = '#ff8a45';
-  ctx.fillRect(-4, -30, 8, 22);
-  // windshield
-  ctx.fillStyle = 'rgba(200,225,235,0.8)';
-  ctx.fillRect(-8, -12, 16, 4);
-  // seat
-  ctx.fillStyle = '#2b2f32';
-  ctx.fillRect(-8, 2, 16, 18);
-  // rider
-  ctx.fillStyle = '#3a2a22';
-  ctx.beginPath();
-  ctx.ellipse(0, 4, 10, 8, 0, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#d95a12';
-  ctx.beginPath();
-  ctx.arc(0, -2, 6.5, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#1e2225';
-  ctx.fillRect(-4, -5, 8, 3);
-  ctx.restore();
+  const r = grid(ctx, x, y, q);
+  r(-5, -3, 10, 3, '#343a3e');
+  r(-4, -5, 8, 2, '#4a5156');
+  r(-5, -4, 2, 2, '#4a5156');
+  r(2, -5, 3, 4, '#343a3e');
+  r(-3, -6, 6, 1, '#f4f8f9');
+  r(-2, -7, 3, 1, '#f4f8f9');
+  r(-4, -5, 2, 1, '#6a7378');
+  r(-1, -3, 2, 1, '#5b6368');
 }
 
 export function drawSledIcon(ctx: Ctx, x: number, y: number, color: string) {

@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import { theme } from './theme';
-import { BEST_KEY, newGame, update } from './snowrace/engine';
+import { BEST_KEY, meters, newGame, update } from './snowrace/engine';
 import type { Game, Phase } from './snowrace/engine';
+import { LEVELS } from './snowrace/levels';
 import { render } from './snowrace/render';
 import Overlays from './snowrace/Overlays';
 
@@ -16,8 +17,13 @@ function SnowRace() {
   const pointersRef = useRef(new Map<number, 'l' | 'r'>());
 
   const [phase, setPhase] = useState<Phase>('menu');
-  const [final, setFinal] = useState(0);
-  const [best, setBest] = useState(() => Number(localStorage.getItem(BEST_KEY) || 0));
+  const levelRef = useRef(LEVELS[0]);
+  const bestKey = `${BEST_KEY}-${levelRef.current.id}`;
+  const [result, setResult] = useState({ meters: 0, time: 0 });
+  const [best, setBest] = useState<number | null>(() => {
+    const v = localStorage.getItem(bestKey);
+    return v ? Number(v) : null;
+  });
   const [pressed, setPressed] = useState({ left: false, right: false });
 
   const syncInput = useCallback(() => {
@@ -35,7 +41,7 @@ function SnowRace() {
     const el = wrapRef.current;
     const lw = old?.lw ?? (el ? el.clientWidth : 400);
     const lh = old?.lh ?? (el ? el.clientHeight : 800);
-    gameRef.current = newGame(lw, lh);
+    gameRef.current = newGame(levelRef.current, lw, lh);
     phaseRef.current = 'playing';
     setPhase('playing');
   }, []);
@@ -61,7 +67,7 @@ function SnowRace() {
         gameRef.current.lw = lw;
         gameRef.current.lh = lh;
       } else {
-        gameRef.current = newGame(lw, lh);
+        gameRef.current = newGame(levelRef.current, lw, lh);
       }
     };
     resize();
@@ -76,19 +82,22 @@ function SnowRace() {
       if (g) {
         if (phaseRef.current === 'playing') {
           const s = steerRef.current;
-          const over = update(g, dt, (s.right ? 1 : 0) - (s.left ? 1 : 0));
-          if (over) {
-            phaseRef.current = 'over';
-            const score = g.score;
-            setFinal(score);
-            setBest((b) => Math.max(b, score));
-            const stored = Number(localStorage.getItem(BEST_KEY) || 0);
-            if (score > stored) localStorage.setItem(BEST_KEY, String(score));
-            setPhase('over');
+          const next = update(g, dt, (s.right ? 1 : 0) - (s.left ? 1 : 0));
+          if (next !== 'playing') {
+            phaseRef.current = next;
+            const time = g.finishTime ?? g.time;
+            setResult({ meters: meters(g), time });
+            if (next === 'finished') {
+              const key = `${BEST_KEY}-${g.level.id}`;
+              const stored = localStorage.getItem(key);
+              if (!stored || time < Number(stored)) localStorage.setItem(key, String(time));
+              setBest((b) => (b === null || time < b ? time : b));
+            }
+            setPhase(next);
           }
         }
         ctx.setTransform(dpr * u, 0, 0, dpr * u, 0, 0);
-        render(ctx, g, phaseRef.current);
+        render(ctx, g, phaseRef.current, now);
       }
       raf = requestAnimationFrame(loop);
     };
@@ -159,7 +168,7 @@ function SnowRace() {
       }}
     >
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
-      <Overlays phase={phase} pressed={pressed} final={final} best={best} onStart={start} />
+      <Overlays phase={phase} pressed={pressed} result={result} best={best} onStart={start} />
     </div>
   );
 }

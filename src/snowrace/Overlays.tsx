@@ -5,14 +5,14 @@ import { arrowStyle, bigBtn, btnBase, homeLink, overlayBox, sideLabel } from './
 interface Props {
   phase: Phase;
   pressed: { left: boolean; right: boolean };
-  final: number;
-  best: number;
+  result: { meters: number; time: number };
+  best: number | null;
   onStart: () => void;
 }
 
 const stop = (e: ReactPointerEvent) => e.stopPropagation();
 
-function Overlays({ phase, pressed, final, best, onStart }: Props) {
+function Overlays({ phase, pressed, result, best, onStart }: Props) {
   return (
     <>
       {phase === 'playing' && (
@@ -56,7 +56,7 @@ function Overlays({ phase, pressed, final, best, onStart }: Props) {
           <h1 style={{ margin: 0, fontSize: 44, fontWeight: 900, letterSpacing: 3 }}>SNOWRACE</h1>
           <p style={{ margin: 0, maxWidth: 320, opacity: 0.85 }}>
             Hold the left or right side of the screen to steer. Dodge trees and rocks, and line up with the
-            bridges to cross the streams.
+            bridges to cross the streams. Reach the campfire at the end of the trail!
           </p>
           <button style={bigBtn} onClick={onStart}>START</button>
           <p style={{ margin: 0, fontSize: 12, opacity: 0.6 }}>Desktop: ← / → arrow keys</p>
@@ -66,9 +66,19 @@ function Overlays({ phase, pressed, final, best, onStart }: Props) {
       {phase === 'over' && (
         <div style={overlayBox} onPointerDown={stop}>
           <h1 style={{ margin: 0, fontSize: 40, fontWeight: 900, letterSpacing: 2 }}>GAME OVER</h1>
-          <div style={{ fontSize: 13, letterSpacing: 2, opacity: 0.75 }}>POINTS</div>
-          <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1 }}>{final}</div>
-          <div style={{ fontSize: 13, opacity: 0.7 }}>BEST: {best}</div>
+          <div style={{ fontSize: 13, letterSpacing: 2, opacity: 0.75 }}>YOU MADE IT</div>
+          <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1 }}>{result.meters} m</div>
+          <button style={bigBtn} onClick={onStart}>PLAY AGAIN</button>
+        </div>
+      )}
+
+      {phase === 'finished' && (
+        <div style={overlayBox} onPointerDown={stop}>
+          <div style={{ fontSize: 48 }}>🏁</div>
+          <h1 style={{ margin: 0, fontSize: 40, fontWeight: 900, letterSpacing: 2 }}>FINISH!</h1>
+          <div style={{ fontSize: 13, letterSpacing: 2, opacity: 0.75 }}>YOUR TIME</div>
+          <div style={{ fontSize: 56, fontWeight: 900, lineHeight: 1 }}>{result.time.toFixed(2)} s</div>
+          {best !== null && <div style={{ fontSize: 13, opacity: 0.7 }}>BEST: {best.toFixed(2)} s</div>}
           <button style={bigBtn} onClick={onStart}>PLAY AGAIN</button>
         </div>
       )}

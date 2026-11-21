@@ -1,96 +1,17 @@
 import { theme } from '../theme';
-import { HALF, K, MAX_LIVES, ORANGE, center } from './engine';
-import type { Game, Phase, Rock, Tree } from './engine';
-import { drawRock, drawSled, drawSledIcon, drawTree } from './draw';
+import { MAX_LIVES, ORANGE, meters } from './engine';
+import type { Game, Phase } from './engine';
+import { drawRock, drawSledIcon, drawTree } from './draw';
+import { drawSled } from './sled';
+import { drawDog, drawFire, drawFlag } from './props';
+import { drawGround } from './ground';
+import { lowerBound } from './scene';
+import { makeCam, project } from './camera';
 
 type Ctx = CanvasRenderingContext2D;
 
-function drawGround(ctx: Ctx, g: Game, sx: (x: number) => number, worldY: (y: number) => number) {
-  const bands: Array<[number, string]> = [[HALF + 32, '#d3e0e5'], [HALF + 6, '#f7fafb']];
-  const rows: number[] = [];
-  for (let s = -30; s <= g.lh + 30; s += 8) rows.push(s);
-  for (const [w, color] of bands) {
-    ctx.fillStyle = color;
-    ctx.beginPath();
-    rows.forEach((s, i) => {
-      const px = sx(center(worldY(s)) - w);
-      if (i === 0) ctx.moveTo(px, s); else ctx.lineTo(px, s);
-    });
-    for (let i = rows.length - 1; i >= 0; i--) {
-      ctx.lineTo(sx(center(worldY(rows[i])) + w), rows[i]);
-    }
-    ctx.closePath();
-    ctx.fill();
-  }
-}
-
-function drawStreams(ctx: Ctx, g: Game, sx: (x: number) => number, sy: (y: number) => number) {
-  const { lw, lh } = g;
-  for (const s of g.streams) {
-    const top = sy(s.y1);
-    const bottom = sy(s.y0);
-    if (bottom < -40 || top > lh + 40) continue;
-    ctx.fillStyle = '#2b3135';
-    ctx.fillRect(-20, top, lw + 40, bottom - top);
-    ctx.fillStyle = '#e3edf0';
-    ctx.fillRect(-20, top - 3, lw + 40, 3);
-    ctx.fillRect(-20, bottom, lw + 40, 3);
-    ctx.strokeStyle = '#4a545a';
-    ctx.lineWidth = 1.5;
-    for (let i = 1; i < 4; i++) {
-      const yy = top + ((bottom - top) * i) / 4;
-      ctx.beginPath();
-      ctx.moveTo(-20, yy);
-      for (let xx = -20; xx < lw + 20; xx += 30) ctx.lineTo(xx + 15, yy + (xx % 60 === 0 ? -2 : 2));
-      ctx.stroke();
-    }
-    // bridge
-    const x1 = sx(s.bx - 40);
-    const x2 = sx(s.bx + 40);
-    const bt = sy(s.y1 + 16);
-    const bb = sy(s.y0 - 16);
-    ctx.fillStyle = '#14100e';
-    ctx.fillRect(x1, bt + 5, x2 - x1, bb - bt);
-    const n = 10;
-    const ph = (bb - bt) / n;
-    for (let i = 0; i < n; i++) {
-      ctx.fillStyle = i % 2 ? '#4d4139' : '#3c322b';
-      ctx.fillRect(x1, bt + i * ph, x2 - x1, ph - 2);
-    }
-    ctx.fillStyle = '#2a211b';
-    ctx.fillRect(x1 - 4, bt - 4, 6, bb - bt + 8);
-    ctx.fillRect(x2 - 2, bt - 4, 6, bb - bt + 8);
-    ctx.fillStyle = '#f2f6f7';
-    ctx.fillRect(x1 - 4, bt - 4, 6, 4);
-    ctx.fillRect(x2 - 2, bt - 4, 6, 4);
-  }
-}
-
-function drawTracks(ctx: Ctx, g: Game, sx: (x: number) => number, sy: (y: number) => number) {
-  if (g.track.length < 2) return;
-  ctx.lineCap = 'round';
-  ctx.lineJoin = 'round';
-  const layers: Array<[number, string, number]> = [
-    [1, 'rgba(38,43,47,0.7)', 4],
-    [0.6, 'rgba(38,43,47,0.35)', 2],
-  ];
-  for (const off of [-10, 10]) {
-    for (const [k, color, width] of layers) {
-      ctx.strokeStyle = color;
-      ctx.lineWidth = width;
-      ctx.beginPath();
-      g.track.forEach((p, i) => {
-        const x = sx(p.x + off * k);
-        const y = sy(p.y);
-        if (i === 0) ctx.moveTo(x, y); else ctx.lineTo(x, y);
-      });
-      ctx.stroke();
-    }
-  }
-}
-
 function drawHud(ctx: Ctx, g: Game) {
-  const { lw } = g;
+  const { lw, lh } = g;
   const pad = 16;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
@@ -98,11 +19,12 @@ function drawHud(ctx: Ctx, g: Game) {
   ctx.shadowBlur = 4;
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.font = `700 12px ${theme.fontFamily}`;
-  ctx.fillText(`LEVEL ${Math.floor(g.score / 500) + 1}`, pad, pad);
-  ctx.fillText('POINTS', pad, pad + 16);
+  ctx.fillText('POINTS', pad, pad);
   ctx.fillStyle = '#ffffff';
   ctx.font = `800 28px ${theme.fontFamily}`;
-  ctx.fillText(String(g.score), pad, pad + 30);
+  ctx.fillText(String(meters(g)), pad, pad + 14);
+  ctx.font = `700 13px ${theme.fontFamily}`;
+  ctx.fillText(`${g.time.toFixed(1)} s`, pad, pad + 46);
   ctx.shadowBlur = 0;
 
   const pw = MAX_LIVES * 32 + 14;
@@ -114,46 +36,103 @@ function drawHud(ctx: Ctx, g: Game) {
   for (let i = 0; i < MAX_LIVES; i++) {
     drawSledIcon(ctx, px0 + 8 + i * 32, pad + 6, i < g.lives ? ORANGE : '#9aa3a8');
   }
+
+  if (g.notice > 0) {
+    const a = Math.min(1, g.notice * 2);
+    const pop = 1 + Math.max(0, g.notice - 1.9) * 2;
+    ctx.save();
+    ctx.globalAlpha = a;
+    ctx.translate(lw / 2, lh * 0.28);
+    ctx.scale(pop, pop);
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = 6;
+    ctx.fillStyle = '#ffb52e';
+    ctx.font = `900 34px ${theme.fontFamily}`;
+    ctx.fillText('Speed up!', 0, 0);
+    ctx.restore();
+  }
 }
 
-export function render(ctx: Ctx, g: Game, phase: Phase) {
-  const { lw, lh } = g;
-  const py = lh * 0.72;
-  const sx = (x: number) => lw / 2 + (x - g.camX);
-  const sy = (y: number) => py - (y - g.y) * K;
-  const worldY = (screenY: number) => g.y + (py - screenY) / K;
+type Item = { y: number; kind: 0 | 1 | 2 | 3 | 4 | 5; i: number };
+
+export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
+  const { lw, lh, scene } = g;
+  const cam = makeCam(g.camX, g.y, lw, lh);
+  const t = now / 1000;
 
   ctx.save();
   if (g.shake > 0) ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-
   ctx.fillStyle = '#16211d';
   ctx.fillRect(-20, -20, lw + 40, lh + 40);
 
-  drawGround(ctx, g, sx, worldY);
-  drawStreams(ctx, g, sx, sy);
-  drawTracks(ctx, g, sx, sy);
+  drawGround(ctx, g, cam);
 
   // depth-sorted objects (far first)
-  type Item = { y: number; kind: 0 | 1 | 2; o?: Tree | Rock };
-  const items: Item[] = [{ y: g.y, kind: 2 }];
-  for (const t of g.trees) {
-    const y = sy(t.y);
-    if (y > -20 && y < lh + 140) items.push({ y: t.y, kind: 0, o: t });
+  const yMin = g.y - 330;
+  const yMax = g.y + 1900;
+  const items: Item[] = [{ y: g.y, kind: 2, i: 0 }];
+  for (let i = lowerBound(scene.trees, yMin); i < scene.trees.length && scene.trees[i].y < yMax; i++) {
+    items.push({ y: scene.trees[i].y, kind: 0, i });
   }
-  for (const r of g.rocks) {
-    const y = sy(r.y);
-    if (y > -20 && y < lh + 60) items.push({ y: r.y, kind: 1, o: r });
+  for (let i = lowerBound(scene.rocks, yMin); i < scene.rocks.length && scene.rocks[i].y < yMax; i++) {
+    items.push({ y: scene.rocks[i].y, kind: 1, i });
+  }
+  if (scene.fire.y > yMin && scene.fire.y < yMax) {
+    items.push({ y: scene.fire.y, kind: 3, i: 0 }, { y: scene.dog.y, kind: 4, i: 0 });
+  }
+  const fy = g.level.length;
+  if (fy > yMin && fy < yMax) {
+    items.push({ y: fy, kind: 5, i: 0 }, { y: fy, kind: 5, i: 1 });
   }
   items.sort((a, b) => b.y - a.y);
+
   for (const it of items) {
-    if (it.kind === 2) {
-      const blink = g.invuln > 0 && Math.floor(g.invuln * 12) % 2 === 0;
-      if (!blink) drawSled(ctx, sx(g.x), py, g.heading * 0.8 + Math.atan2(g.vx, g.speed) * 0.4);
-    } else if (it.o) {
-      const x = sx(it.o.x);
-      const y = sy(it.o.y);
-      if (it.kind === 0) drawTree(ctx, x, y, it.o.s); else drawRock(ctx, x, y, it.o.s);
+    switch (it.kind) {
+      case 0: {
+        const o = scene.trees[it.i];
+        const p = project(cam, o.x, o.y);
+        if (p.y > -40 && p.y < lh + 140) drawTree(ctx, p.x, p.y, o.s * p.s, o.v);
+        break;
+      }
+      case 1: {
+        const o = scene.rocks[it.i];
+        const p = project(cam, o.x, o.y);
+        if (p.y > -20 && p.y < lh + 60) drawRock(ctx, p.x, p.y, o.s * p.s);
+        break;
+      }
+      case 2: {
+        const blink = g.invuln > 0 && Math.floor(g.invuln * 12) % 2 === 0;
+        if (blink) break;
+        const p = project(cam, g.x, g.y);
+        drawSled(ctx, p.x, p.y, p.s, g.heading * 0.5 + Math.atan2(g.vx, g.speed) * 0.4, g.lean);
+        break;
+      }
+      case 3: {
+        const p = project(cam, scene.fire.x, scene.fire.y);
+        drawFire(ctx, p.x, p.y, p.s, t);
+        break;
+      }
+      case 4: {
+        const p = project(cam, scene.dog.x, scene.dog.y);
+        drawDog(ctx, p.x, p.y, p.s, t);
+        break;
+      }
+      default: {
+        const side = it.i === 0 ? -1 : 1;
+        const p = project(cam, scene.clearing.x + side * 135, fy);
+        drawFlag(ctx, p.x, p.y, p.s, t);
+      }
     }
+  }
+
+  // snow spray thrown up behind the sled
+  for (const sp of g.spray) {
+    const p = project(cam, sp.x, sp.y);
+    const a = Math.min(1, sp.life * 2.2);
+    ctx.fillStyle = `rgba(250,253,255,${a.toFixed(2)})`;
+    const sz = Math.max(2, Math.round((2 + sp.life * 4) * p.s));
+    ctx.fillRect(Math.round(p.x), Math.round(p.y - sp.z * p.s), sz, sz);
   }
 
   // snowfall
