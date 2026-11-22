@@ -16,8 +16,6 @@ function drawHud(ctx: Ctx, g: Game) {
   const pad = 16;
   ctx.textBaseline = 'top';
   ctx.textAlign = 'left';
-  ctx.shadowColor = 'rgba(0,0,0,0.6)';
-  ctx.shadowBlur = 4;
   ctx.fillStyle = 'rgba(255,255,255,0.75)';
   ctx.font = `700 12px ${theme.fontFamily}`;
   ctx.fillText('POINTS', pad, pad);
@@ -26,7 +24,6 @@ function drawHud(ctx: Ctx, g: Game) {
   ctx.fillText(String(meters(g)), pad, pad + 14);
   ctx.font = `700 13px ${theme.fontFamily}`;
   ctx.fillText(`${g.time.toFixed(1)} s`, pad, pad + 46);
-  ctx.shadowBlur = 0;
 
   const pw = MAX_LIVES * 32 + 14;
   const px0 = lw - pad - pw;
@@ -46,8 +43,6 @@ function drawHud(ctx: Ctx, g: Game) {
     ctx.translate(lw / 2, lh * 0.28);
     ctx.scale(pop, pop);
     ctx.textAlign = 'center';
-    ctx.shadowColor = 'rgba(0,0,0,0.7)';
-    ctx.shadowBlur = 6;
     ctx.fillStyle = '#ffb52e';
     ctx.font = `900 34px ${theme.fontFamily}`;
     ctx.fillText('Speed up!', 0, 0);
@@ -55,7 +50,8 @@ function drawHud(ctx: Ctx, g: Game) {
   }
 }
 
-type Item = { y: number; kind: 0 | 1 | 2 | 3 | 4 | 5; i: number };
+type Item = { y: number; kind: 0 | 1 | 2 | 3 | 4 | 5; i: number; px: number; py: number; ps: number };
+const ZERO = { px: 0, py: 0, ps: 0 };
 
 export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
   const { lw, lh, scene } = g;
@@ -70,24 +66,30 @@ export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
   // depth-sorted objects (far first)
   const yMin = g.y - 400;
   const yMax = g.y + 2600;
-  const items: Item[] = [{ y: g.y, kind: 2, i: 0 }];
+  const items: Item[] = [{ y: g.y, kind: 2, i: 0, ...ZERO }];
   for (let i = lowerBound(scene.trees, yMin); i < scene.trees.length && scene.trees[i].y < yMax; i++) {
-    items.push({ y: scene.trees[i].y, kind: 0, i });
+    const o = scene.trees[i];
+    // cheap rejection before projecting: behind the camera or far outside the view cone
+    const p = project(cam, o.x, o.y);
+    if (p.d < 100 || p.y < -60 || p.y > lh + 500) continue;
+    const m = 60 * o.s * p.s;
+    if (p.x < -m - 60 || p.x > lw + m + 60) continue;
+    items.push({ y: p.d, kind: 0, i, px: p.x, py: p.y, ps: p.s });
   }
   scene.animals.forEach((a, i) => {
-    if (a.started && a.t < 4.2) items.push({ y: a.y, kind: 1, i });
+    if (a.started && a.t < 4.2) items.push({ y: 0, kind: 1, i, ...ZERO });
   });
   if (scene.fire.y > yMin && scene.fire.y < yMax) {
-    items.push({ y: scene.fire.y, kind: 3, i: 0 }, { y: scene.dog.y, kind: 4, i: 0 });
+    items.push({ y: 0, kind: 3, i: 0, ...ZERO }, { y: 0, kind: 4, i: 0, ...ZERO });
   }
   const fy = g.level.length;
   if (fy > yMin && fy < yMax) {
-    items.push({ y: fy, kind: 5, i: 0 }, { y: fy, kind: 5, i: 1 });
+    items.push({ y: 0, kind: 5, i: 0, ...ZERO }, { y: 0, kind: 5, i: 1, ...ZERO });
   }
   const dOf = (x: number, y: number) => project(cam, x, y).d;
   for (const it of items) {
-    it.y = it.kind === 0 ? dOf(scene.trees[it.i].x, scene.trees[it.i].y)
-      : it.kind === 1 ? dOf(scene.animals[it.i].x, scene.animals[it.i].y)
+    if (it.kind === 0) continue;
+    it.y = it.kind === 1 ? dOf(scene.animals[it.i].x, scene.animals[it.i].y)
       : it.kind === 2 ? dOf(g.x, g.y)
       : it.kind === 3 ? dOf(scene.fire.x, scene.fire.y)
       : it.kind === 4 ? dOf(scene.dog.x, scene.dog.y)
@@ -99,8 +101,7 @@ export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
     switch (it.kind) {
       case 0: {
         const o = scene.trees[it.i];
-        const p = project(cam, o.x, o.y);
-        if (p.d > 100 && p.y > -40 && p.y < lh + 400 && p.x > -200 && p.x < lw + 200) drawTree(ctx, p.x, p.y, o.s * p.s, o.v);
+        drawTree(ctx, it.px, it.py, o.s * it.ps, o.v);
         break;
       }
       case 1: {

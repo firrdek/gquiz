@@ -26,7 +26,29 @@ const TREE_COLORS: Array<[string, string]> = [
   ['#1b3a38', '#0f2827'],
 ];
 
+// Each tree variant is pre-rendered once to an offscreen canvas and then blitted with drawImage
+const SPR_SCALE = 2;
+const SPR_W = 100;
+const SPR_H = 520;
+const SPR_OX = SPR_W / 2;
+const SPR_OY = SPR_H - 14;
+const treeSprites: Array<HTMLCanvasElement | undefined> = [];
+
 export function drawTree(ctx: Ctx, x: number, y: number, s: number, v = 0) {
+  let spr = treeSprites[v];
+  if (!spr) {
+    spr = document.createElement('canvas');
+    spr.width = SPR_W * SPR_SCALE;
+    spr.height = SPR_H * SPR_SCALE;
+    const c = spr.getContext('2d')!;
+    c.scale(SPR_SCALE, SPR_SCALE);
+    drawTreeVector(c, SPR_OX, SPR_OY, 1, v);
+    treeSprites[v] = spr;
+  }
+  ctx.drawImage(spr, x - SPR_OX * s, y - SPR_OY * s, SPR_W * s, SPR_H * s);
+}
+
+function drawTreeVector(ctx: Ctx, x: number, y: number, s: number, v: number) {
   const [lit, dark] = TREE_COLORS[v];
   ctx.fillStyle = 'rgba(120,140,150,0.25)';
   ctx.beginPath();

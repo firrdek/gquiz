@@ -28,12 +28,10 @@ function drawSnow(ctx: Ctx, g: Game, cam: Cam, y0: number, y1: number) {
   // rolling snow: soft light and shadow waves across the whole ground
   const x0 = g.x - 1100;
   const x1 = g.x + 1100;
-  for (let y = Math.floor(y0 / 60) * 60; y < y1; y += 60) {
+  for (let y = Math.floor(y0 / 120) * 120; y < y1; y += 120) {
     const a = Math.sin(y / 131) * Math.cos(y / 337 + 1);
-    const b = Math.sin(y / 77 + 2);
-    if (a > 0.15) poly(ctx, cam, `rgba(255,255,255,${(0.35 * a).toFixed(2)})`, [[x0, y], [x1, y], [x1, y + 60], [x0, y + 60]]);
-    else if (a < -0.15) poly(ctx, cam, `rgba(140,165,190,${(-0.16 * a).toFixed(2)})`, [[x0, y], [x1, y], [x1, y + 60], [x0, y + 60]]);
-    if (b > 0.6) poly(ctx, cam, 'rgba(255,255,255,0.12)', [[x0, y + 20], [x1, y + 20], [x1, y + 44], [x0, y + 44]]);
+    if (a > 0.15) poly(ctx, cam, `rgba(255,255,255,${(0.35 * a).toFixed(2)})`, [[x0, y], [x1, y], [x1, y + 120], [x0, y + 120]]);
+    else if (a < -0.15) poly(ctx, cam, `rgba(140,165,190,${(-0.16 * a).toFixed(2)})`, [[x0, y], [x1, y], [x1, y + 120], [x0, y + 120]]);
   }
   // dunes
   for (const d of g.scene.dunes) {
@@ -41,6 +39,7 @@ function drawSnow(ctx: Ctx, g: Game, cam: Cam, y0: number, y1: number) {
     const p = project(cam, d.x, d.y);
     if (p.y < -30 || p.y > lh + 60 || p.x < -150 || p.x > lw + 150) continue;
     const rx = d.rx * p.s;
+    if (rx < 6) continue;
     const ry = rx * 0.34;
     ctx.fillStyle = 'rgba(150,175,195,0.24)';
     ctx.beginPath();
@@ -55,7 +54,7 @@ function drawSnow(ctx: Ctx, g: Game, cam: Cam, y0: number, y1: number) {
 
 function drawTrail(ctx: Ctx, g: Game, cam: Cam, y0: number, y1: number) {
   const lvl = g.level;
-  const step = 36;
+  const step = 72;
   const start = Math.floor(y0 / step) * step;
   for (const [grow, color] of [[30, '#e9f1f4'], [0, '#f8fbfc']] as Array<[number, string]>) {
     for (let y = start; y < y1; y += step) {

@@ -50,14 +50,19 @@ function SnowRace() {
   useEffect(() => {
     const canvas = canvasRef.current!;
     const wrap = wrapRef.current!;
-    const ctx = canvas.getContext('2d')!;
+    const ctx = canvas.getContext('2d', { alpha: false })!;
+    const debug = window.location.search.includes('debug') || window.location.hash.includes('debug');
+    let frames = 0;
+    let acc = 0;
+    let fpsText = '';
     let u = 1;
     let dpr = 1;
 
     const resize = () => {
       const w = wrap.clientWidth;
       const h = wrap.clientHeight;
-      dpr = window.devicePixelRatio || 1;
+      // Pixel-art style does not need native hi-dpi resolution; cap it to save fill rate
+      dpr = Math.min(window.devicePixelRatio || 1, 1.25);
       u = Math.max(0.7, Math.min(1.4, Math.min(w / 420, h / 760)));
       canvas.width = Math.round(w * dpr);
       canvas.height = Math.round(h * dpr);
@@ -97,7 +102,21 @@ function SnowRace() {
           }
         }
         ctx.setTransform(dpr * u, 0, 0, dpr * u, 0, 0);
+        const t0 = performance.now();
         render(ctx, g, phaseRef.current, now);
+        if (debug) {
+          acc += performance.now() - t0;
+          frames += 1;
+          if (frames === 30) {
+            fpsText = `render ${(acc / frames).toFixed(1)} ms`;
+            frames = 0;
+            acc = 0;
+          }
+          ctx.setTransform(1, 0, 0, 1, 0, 0);
+          ctx.fillStyle = '#fff';
+          ctx.font = '12px monospace';
+          ctx.fillText(`${fpsText}  ${(1 / Math.max(dt, 0.001)).toFixed(0)} fps`, 10, canvas.height - 10);
+        }
       }
       raf = requestAnimationFrame(loop);
     };

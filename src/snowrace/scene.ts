@@ -62,7 +62,14 @@ const plateau = (y: number, y0: number, y1: number, edge: number) =>
 export function centerAt(level: LevelDef, y: number): number {
   const p = level.path;
   if (y <= p[0][0]) return p[0][1];
-  for (let i = 0; i < p.length - 1; i++) {
+  // binary search for the segment containing y
+  let lo = 0;
+  let hi = p.length - 1;
+  while (hi - lo > 1) {
+    const mid = (lo + hi) >> 1;
+    if (p[mid][0] <= y) lo = mid; else hi = mid;
+  }
+  for (let i = lo; i < Math.min(lo + 1, p.length - 1); i++) {
     if (y < p[i + 1][0]) {
       const t = (y - p[i][0]) / (p[i + 1][0] - p[i][0]);
       const w = (1 - Math.cos(t * Math.PI)) / 2;

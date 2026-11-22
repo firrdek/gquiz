@@ -13,6 +13,9 @@ const STARS = Array.from({ length: 34 }, (_, i) => {
   return { x: a - Math.floor(a), y: b - Math.floor(b), r: i % 7 === 0 ? 2 : 1, ph: i * 1.3 };
 });
 
+let skyGrad: CanvasGradient | null = null;
+let skyH = 0;
+
 export function skyBottom(cam: Cam): number {
   return farLineY(cam, FAR);
 }
@@ -21,10 +24,14 @@ export function skyBottom(cam: Cam): number {
 export function drawSky(ctx: Ctx, g: Game, cam: Cam, t: number) {
   const { lw, lh } = g;
   const fy = skyBottom(cam);
-  const grad = ctx.createLinearGradient(0, 0, 0, Math.max(40, fy));
-  grad.addColorStop(0, '#02060f');
-  grad.addColorStop(1, '#0a1a33');
-  ctx.fillStyle = grad;
+  const h = Math.round(Math.max(40, fy));
+  if (!skyGrad || skyH !== h) {
+    skyGrad = ctx.createLinearGradient(0, 0, 0, h);
+    skyGrad.addColorStop(0, '#02060f');
+    skyGrad.addColorStop(1, '#0a1a33');
+    skyH = h;
+  }
+  ctx.fillStyle = skyGrad;
   ctx.fillRect(-20, -20, lw + 40, lh + 40);
 
   for (const s of STARS) {
