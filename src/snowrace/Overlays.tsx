@@ -1,5 +1,6 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { Phase } from './engine';
+import SnowmobileIcon from './SnowmobileIcon';
 import { arrowStyle, bigBtn, btnBase, homeLink, overlayBox, sideLabel } from './styles';
 
 interface Props {
@@ -52,11 +53,11 @@ function Overlays({ phase, pressed, result, best, onStart }: Props) {
 
       {phase === 'menu' && (
         <div style={overlayBox} onPointerDown={stop}>
-          <div style={{ fontSize: 56 }}>🛷</div>
+          <SnowmobileIcon size={96} />
           <h1 style={{ margin: 0, fontSize: 44, fontWeight: 900, letterSpacing: 3 }}>SNOWRACE</h1>
           <p style={{ margin: 0, maxWidth: 320, opacity: 0.85 }}>
-            Hold the left or right side of the screen to steer. Dodge trees and rocks, and line up with the
-            bridges to cross the streams. Reach the campfire at the end of the trail!
+            Hold the left or right side of the screen to steer. Dodge the trees and the animals crossing the
+            trail, and line up with the bridges to cross the streams. Reach the campfire at the end of the trail!
           </p>
           <button style={bigBtn} onClick={onStart}>START</button>
           <p style={{ margin: 0, fontSize: 12, opacity: 0.6 }}>Desktop: ← / → arrow keys</p>

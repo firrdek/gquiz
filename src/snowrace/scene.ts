@@ -7,7 +7,18 @@ const TREE_STEP = 38;
 const TREE_MARGIN = 34; // free snow kept between the trail edge and the first trees
 
 export interface Tree { x: number; y: number; s: number; v: 0 | 1 | 2 }
-export interface Rock { x: number; y: number; s: number }
+export const ANIMAL_SPEED = 170; // units/s while crossing the trail
+export const ANIMAL_LEAD = 1.9; // seconds before the sled arrives that the animal sets off
+
+export interface Animal {
+  kind: 'fox' | 'raccoon';
+  y: number;
+  dir: 1 | -1; // running direction along x
+  x0: number; // start x (outside the trail)
+  x: number;
+  t: number; // seconds running
+  started: boolean;
+}
 export interface Dune { x: number; y: number; rx: number; tone: number }
 // A meandering stream: water band is ym(x) +- hw, running across the forest
 export interface Stream { ym: number; hw: number; ph: number; bx: number }
@@ -19,7 +30,7 @@ export interface Lane { c: number; half: number }
 
 export interface Scene {
   trees: Tree[];
-  rocks: Rock[];
+  animals: Animal[];
   dunes: Dune[];
   streams: Stream[];
   clearing: { x: number; y: number; r: number };
@@ -136,15 +147,16 @@ export function buildScene(level: LevelDef): Scene {
   }
   dunes.sort((a, b) => a.y - b.y);
 
-  const rocks: Rock[] = level.rocks
-    .map((r) => {
-      const lanes = lanesAt(level, r.y);
-      const lane = lanes.length === 1 ? lanes[0] : lanes[(r.lane ?? 1) > 0 ? 1 : 0];
-      return { x: lane.c + r.off, y: r.y, s: r.s };
+  // Each animal is timed to be about `at` units from the trail center when the sled arrives
+  const animals: Animal[] = level.animals
+    .map((d): Animal => {
+      const cx = c(d.y);
+      const x0 = cx + d.at - d.dir * ANIMAL_SPEED * ANIMAL_LEAD;
+      return { kind: d.kind, y: d.y, dir: d.dir, x0, x: x0, t: 0, started: false };
     })
     .sort((a, b) => a.y - b.y);
 
-  return { trees, rocks, dunes, streams, clearing, fire, dog };
+  return { trees, animals, dunes, streams, clearing, fire, dog };
 }
 
 // First index whose y >= value (arrays sorted by y)

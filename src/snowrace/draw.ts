@@ -32,16 +32,17 @@ export function drawTree(ctx: Ctx, x: number, y: number, s: number, v = 0) {
   ctx.beginPath();
   ctx.ellipse(x + 8 * s, y, 24 * s, 7 * s, 0, 0, Math.PI * 2);
   ctx.fill();
+  const k = 1.75; // trees are tall compared to the sled
   ctx.fillStyle = '#2a211b';
-  ctx.fillRect(x - 3 * s, y - 10 * s, 6 * s, 10 * s);
-  for (let i = 0; i < 3; i++) {
-    const baseY = y - 8 * s - i * 26 * s;
-    const w = (30 - i * 7) * s;
-    const h = (46 - i * 4) * s;
+  ctx.fillRect(x - 3 * s, y - 12 * s * k, 6 * s, 12 * s * k);
+  for (let i = 0; i < 4; i++) {
+    const baseY = y - (9 + i * 27) * s * k;
+    const w = (31 - i * 6) * s;
+    const h = (50 - i * 3) * s * k;
     const apexY = baseY - h;
     tri(ctx, lit, [[x, apexY], [x - w, baseY], [x, baseY + 4 * s]]);
     tri(ctx, dark, [[x, apexY], [x + w, baseY], [x, baseY + 4 * s]]);
-    const f = i === 2 ? 0.42 : 0.2;
+    const f = i === 3 ? 0.42 : 0.2;
     tri(ctx, '#f2f6f7', [[x, apexY], [x - w * f, apexY + h * f], [x, apexY + h * f + 2 * s]]);
     tri(ctx, '#c9d6dc', [[x, apexY], [x + w * f, apexY + h * f], [x, apexY + h * f + 2 * s]]);
   }

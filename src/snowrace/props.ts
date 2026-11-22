@@ -73,6 +73,42 @@ export function drawBridge(
   quad('#f2f6f7', bx + half, ya - 3, bx + half + 6, ya + 3);
 }
 
+// Running fox (orange) or raccoon (grey, ringed tail), pixel style, seen from above-behind.
+// dir: +1 runs to the right on screen, -1 to the left
+export function drawAnimal(ctx: Ctx, x: number, y: number, s: number, kind: 'fox' | 'raccoon', dir: 1 | -1, t: number) {
+  const q = 3 * s;
+  ctx.fillStyle = 'rgba(90,110,125,0.32)';
+  ctx.beginPath();
+  ctx.ellipse(x, y + 1 * s, 15 * s, 5 * s, 0, 0, Math.PI * 2);
+  ctx.fill();
+  const r0 = grid(ctx, x, y, q);
+  // mirror in x according to direction
+  const r = (px: number, py: number, w: number, h: number, c: string) => r0(dir > 0 ? px : -px - w, py, w, h, c);
+  const fox = kind === 'fox';
+  const body = fox ? '#e0701e' : '#7b8087';
+  const dark = fox ? '#a8480f' : '#3d4146';
+  const light = fox ? '#f6e3c8' : '#d9dde0';
+  const run = Math.floor(t * 14) % 2;
+  // legs (alternate)
+  r(-4, -1 + run, 1, 1, dark); r(-2, -1 - run + 1, 1, 1, dark);
+  r(2, -1 + run, 1, 1, dark); r(4, -1 - run + 1, 1, 1, dark);
+  // body
+  r(-5, -4, 10, 3, body);
+  r(-4, -5, 8, 1, fox ? '#f08a3a' : '#9aa0a6');
+  r(-4, -2, 6, 1, light);
+  // head
+  r(5, -6, 3, 3, body);
+  r(8, -5, 1, 2, light);
+  r(9, -5, 1, 1, '#15181a');
+  r(5, -7, 1, 1, dark); r(7, -7, 1, 1, dark);
+  r(7, -5, 1, 1, '#15181a');
+  if (!fox) r(6, -5, 2, 1, '#2a2d31'); // bandit mask
+  // tail
+  r(-9, -5, 4, 2, fox ? body : '#8a9096');
+  r(-10, -6, 2, 2, fox ? light : '#2a2d31');
+  if (!fox) { r(-8, -5, 1, 2, '#2a2d31'); r(-6, -5, 1, 2, '#2a2d31'); }
+}
+
 export function drawFlag(ctx: Ctx, x: number, y: number, s: number, t: number) {
   const q = 3 * s;
   const r = grid(ctx, x, y, q);

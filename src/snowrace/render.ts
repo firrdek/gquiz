@@ -1,9 +1,10 @@
 import { theme } from '../theme';
 import { MAX_LIVES, ORANGE, meters } from './engine';
 import type { Game, Phase } from './engine';
-import { drawRock, drawSledIcon, drawTree } from './draw';
+import { drawSledIcon, drawTree } from './draw';
+import { drawSky } from './sky';
 import { drawSled } from './sled';
-import { drawDog, drawFire, drawFlag } from './props';
+import { drawAnimal, drawDog, drawFire, drawFlag } from './props';
 import { drawGround } from './ground';
 import { lowerBound } from './scene';
 import { makeCam, project } from './camera';
@@ -63,21 +64,19 @@ export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
 
   ctx.save();
   if (g.shake > 0) ctx.translate((Math.random() - 0.5) * 8, (Math.random() - 0.5) * 8);
-  ctx.fillStyle = '#16211d';
-  ctx.fillRect(-20, -20, lw + 40, lh + 40);
-
+  drawSky(ctx, g, cam, now / 1000);
   drawGround(ctx, g, cam);
 
   // depth-sorted objects (far first)
   const yMin = g.y - 400;
-  const yMax = g.y + 2300;
+  const yMax = g.y + 2600;
   const items: Item[] = [{ y: g.y, kind: 2, i: 0 }];
   for (let i = lowerBound(scene.trees, yMin); i < scene.trees.length && scene.trees[i].y < yMax; i++) {
     items.push({ y: scene.trees[i].y, kind: 0, i });
   }
-  for (let i = lowerBound(scene.rocks, yMin); i < scene.rocks.length && scene.rocks[i].y < yMax; i++) {
-    items.push({ y: scene.rocks[i].y, kind: 1, i });
-  }
+  scene.animals.forEach((a, i) => {
+    if (a.started && a.t < 4.2) items.push({ y: a.y, kind: 1, i });
+  });
   if (scene.fire.y > yMin && scene.fire.y < yMax) {
     items.push({ y: scene.fire.y, kind: 3, i: 0 }, { y: scene.dog.y, kind: 4, i: 0 });
   }
@@ -88,7 +87,7 @@ export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
   const dOf = (x: number, y: number) => project(cam, x, y).d;
   for (const it of items) {
     it.y = it.kind === 0 ? dOf(scene.trees[it.i].x, scene.trees[it.i].y)
-      : it.kind === 1 ? dOf(scene.rocks[it.i].x, scene.rocks[it.i].y)
+      : it.kind === 1 ? dOf(scene.animals[it.i].x, scene.animals[it.i].y)
       : it.kind === 2 ? dOf(g.x, g.y)
       : it.kind === 3 ? dOf(scene.fire.x, scene.fire.y)
       : it.kind === 4 ? dOf(scene.dog.x, scene.dog.y)
@@ -101,20 +100,20 @@ export function render(ctx: Ctx, g: Game, phase: Phase, now: number) {
       case 0: {
         const o = scene.trees[it.i];
         const p = project(cam, o.x, o.y);
-        if (p.y > -40 && p.y < lh + 160 && p.x > -120 && p.x < lw + 120) drawTree(ctx, p.x, p.y, o.s * p.s, o.v);
+        if (p.d > 100 && p.y > -40 && p.y < lh + 400 && p.x > -200 && p.x < lw + 200) drawTree(ctx, p.x, p.y, o.s * p.s, o.v);
         break;
       }
       case 1: {
-        const o = scene.rocks[it.i];
+        const o = scene.animals[it.i];
         const p = project(cam, o.x, o.y);
-        if (p.y > -20 && p.y < lh + 60) drawRock(ctx, p.x, p.y, o.s * p.s);
+        drawAnimal(ctx, p.x, p.y, p.s, o.kind, o.dir, o.t);
         break;
       }
       case 2: {
         const blink = g.invuln > 0 && Math.floor(g.invuln * 12) % 2 === 0;
         if (blink) break;
         const p = project(cam, g.x, g.y);
-        drawSled(ctx, p.x, p.y, p.s, (g.heading - g.yaw) * 0.35, g.lean);
+        drawSled(ctx, p.x, p.y, p.s, (g.heading - g.yaw) * 0.5, g.lean);
         break;
       }
       case 3: {

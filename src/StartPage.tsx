@@ -1,4 +1,5 @@
 import { theme } from './theme';
+import SnowmobileIcon from './snowrace/SnowmobileIcon';
 
 const cardGrid = {
   display: 'grid',
@@ -71,9 +72,30 @@ function StartPage() {
         <a
           href="#snowrace"
           className="app-card"
-          style={appCard}
+          style={{ ...appCard, position: 'relative', overflow: 'hidden' }}
         >
-          <div style={{ fontSize: 48, marginBottom: 12 }}>🛷</div>
+          <div
+            style={{
+              position: 'absolute',
+              top: 14,
+              right: -32,
+              width: 110,
+              transform: 'rotate(40deg)',
+              background: '#ee6a1f',
+              color: '#fff',
+              fontSize: 12,
+              fontWeight: 800,
+              letterSpacing: 1.5,
+              padding: '3px 0',
+              textAlign: 'center',
+              boxShadow: '0 1px 4px rgba(0,0,0,0.25)',
+            }}
+          >
+            NEW
+          </div>
+          <div style={{ marginBottom: 12, height: 48, display: 'flex', alignItems: 'center' }}>
+            <SnowmobileIcon size={72} />
+          </div>
           <h2 style={appCardTitle}>SnowRace</h2>
           <p style={appCardDescription}>
             Race a snowmobile through the spruce forest

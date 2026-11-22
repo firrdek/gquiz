@@ -5,11 +5,12 @@ export interface StreamDef {
   bridgeOff: number; // bridge offset from the trail center line
 }
 
-export interface RockDef {
+// A fox or raccoon that runs across the trail; the player has to steer clear of it.
+export interface AnimalDef {
   y: number;
-  off: number; // offset from the center of its lane
-  s: number; // size
-  lane?: -1 | 0 | 1; // inside a split: -1 left trail, 1 right trail (default 0 = main)
+  kind: 'fox' | 'raccoon';
+  dir: 1 | -1; // -1 runs from right to left, 1 from left to right
+  at: number; // x offset from the trail center where the animal is when the sled arrives
 }
 
 export interface SpeedUpDef {
@@ -40,7 +41,7 @@ export interface LevelDef {
   startSpeed: number;
   path: Array<[number, number]>; // [y, center x] control points of the winding trail
   streams: StreamDef[];
-  rocks: RockDef[];
+  animals: AnimalDef[];
   speedUps: SpeedUpDef[];
   splits: SplitDef[];
   narrows: NarrowDef[];

@@ -3,6 +3,7 @@ import { project } from './camera';
 import type { Cam } from './camera';
 import type { Game } from './engine';
 import { drawBridge } from './props';
+import { skyBottom } from './sky';
 
 type Ctx = CanvasRenderingContext2D;
 type Pt = [number, number];
@@ -21,8 +22,9 @@ function poly(ctx: Ctx, cam: Cam, fill: string, pts: Pt[]) {
 
 function drawSnow(ctx: Ctx, g: Game, cam: Cam, y0: number, y1: number) {
   const { lw, lh } = g;
+  const fy = skyBottom(cam);
   ctx.fillStyle = '#dde8ed';
-  ctx.fillRect(-20, -20, lw + 40, lh + 40);
+  ctx.fillRect(-20, fy, lw + 40, lh + 40 - fy);
   // rolling snow: soft light and shadow waves across the whole ground
   const x0 = g.x - 1100;
   const x1 = g.x + 1100;
@@ -96,7 +98,7 @@ function drawStreams(ctx: Ctx, g: Game, cam: Cam) {
   const x0 = g.x - 1100;
   const x1 = g.x + 1100;
   for (const s of g.scene.streams) {
-    if (s.ym < g.y - 500 || s.ym > g.y + 2400) continue;
+    if (s.ym < g.y - 400 || s.ym > g.y + 2600) continue;
     const xs: number[] = [];
     for (let x = x0; x <= x1; x += 40) xs.push(x);
     const band = (grow: number, color: string) => {
@@ -105,9 +107,9 @@ function drawStreams(ctx: Ctx, g: Game, cam: Cam) {
       poly(ctx, cam, color, [...top, ...bot]);
     };
     band(5, '#eef4f6'); // snowy banks
-    band(0, '#2b3135'); // water
+    band(0, '#0d2147'); // dark blue water
     // ripples
-    ctx.strokeStyle = '#4a545a';
+    ctx.strokeStyle = '#2c5190';
     ctx.lineWidth = 1.5;
     for (const f of [-0.5, 0, 0.5]) {
       ctx.beginPath();
@@ -122,8 +124,8 @@ function drawStreams(ctx: Ctx, g: Game, cam: Cam) {
 }
 
 export function drawGround(ctx: Ctx, g: Game, cam: Cam) {
-  const y0 = g.y - 500;
-  const y1 = g.y + 2400;
+  const y0 = g.y - 400;
+  const y1 = g.y + 2600;
   drawSnow(ctx, g, cam, y0, y1);
   drawTrail(ctx, g, cam, y0, y1);
   drawGoal(ctx, g, cam);

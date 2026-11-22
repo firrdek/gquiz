@@ -1,5 +1,5 @@
 import type { LevelDef } from './levels';
-import { BRIDGE_HALF, buildScene, centerAt, extentAt, lanesAt, lowerBound, streamHalf, streamMid } from './scene';
+import { ANIMAL_LEAD, ANIMAL_SPEED, BRIDGE_HALF, buildScene, centerAt, extentAt, lanesAt, lowerBound, streamHalf, streamMid } from './scene';
 import type { Scene } from './scene';
 
 export const PLAYER_R = 11;
@@ -20,7 +20,9 @@ export interface Game {
   x: number;
   y: number;
   vx: number;
-  heading: number;
+  heading: number; // direction the sled points (rad, 0 = world +y); persists on flat snow
+  dir: number; // direction of travel; lags heading (drift)
+  turn: number; // current turn rate (rad/s)
   lean: number; // rider lean, -1..1
   lives: number;
   invuln: number;
@@ -45,7 +47,7 @@ export function newGame(level: LevelDef, lw: number, lh: number): Game {
   const x0 = centerAt(level, 0);
   return {
     level, scene: buildScene(level), lw, lh,
-    x: x0, y: 0, vx: 0, heading: 0, lean: 0,
+    x: x0, y: 0, vx: 0, heading: 0, dir: 0, turn: 0, lean: 0,
     lives: MAX_LIVES, invuln: 0, shake: 0, camX: x0, yaw: 0,
     time: 0, speed: level.startSpeed, targetSpeed: level.startSpeed,
     nextSpeedUp: 0, notice: 0, finishTime: null, flakes, spray: [],
@@ -62,6 +64,8 @@ function hit(g: Game, bridgeX?: number) {
   g.shake = 0.3;
   g.vx = 0;
   g.heading = 0;
+  g.dir = 0;
+  g.turn = 0;
   if (bridgeX !== undefined) {
     g.x = bridgeX;
   } else {
@@ -72,7 +76,7 @@ function hit(g: Game, bridgeX?: number) {
 }
 
 function collide(g: Game): boolean {
-  const { trees, rocks } = g.scene;
+  const { trees, animals } = g.scene;
   for (let i = lowerBound(trees, g.y - 45); i < trees.length && trees[i].y < g.y + 45; i++) {
     const t = trees[i];
     const dx = t.x - g.x;
@@ -80,14 +84,29 @@ function collide(g: Game): boolean {
     const r = PLAYER_R + 12 * t.s;
     if (dx * dx + dy * dy < r * r) return true;
   }
-  for (let i = lowerBound(rocks, g.y - 45); i < rocks.length && rocks[i].y < g.y + 45; i++) {
-    const r = rocks[i];
-    const dx = r.x - g.x;
-    const dy = (r.y - g.y) * 0.8;
-    const rad = PLAYER_R + 13 * r.s;
-    if (dx * dx + dy * dy < rad * rad) return true;
+  for (const a of animals) {
+    if (!a.started) continue;
+    const dx = a.x - g.x;
+    const dy = (a.y - g.y) * 0.8;
+    const r = PLAYER_R + 15;
+    if (dx * dx + dy * dy < r * r) return true;
   }
   return false;
+}
+
+// Animals start running across the trail shortly before the sled arrives
+function updateAnimals(g: Game, dt: number) {
+  for (const a of g.scene.animals) {
+    if (!a.started) {
+      if (g.y >= a.y - g.speed * ANIMAL_LEAD && g.y < a.y) {
+        a.started = true;
+        a.x = a.x0;
+      }
+    } else {
+      a.x += a.dir * ANIMAL_SPEED * dt;
+      a.t += dt;
+    }
+  }
 }
 
 // Returns the resulting phase after this step
@@ -106,23 +125,27 @@ export function update(g: Game, dt: number, steerIn: number): Phase {
   if (finishing) g.speed *= Math.exp(-dt * 1.6);
   else g.speed += (g.targetSpeed - g.speed) * Math.min(1, dt * 1.5);
 
-  // Snow-drift inertia: heading lags the input, lateral velocity lags the heading
-  g.heading += (steer * 0.8 - g.heading) * Math.min(1, dt * 3);
-  const targetVx = Math.sin(g.heading) * g.speed * 1.15;
-  g.vx += (targetVx - g.vx) * Math.min(1, dt * 2.4);
+  // Flat snow: steering turns the sled and it keeps pointing that way when released.
+  // The turn rate and the direction of travel both lag a little (snow drift).
+  g.turn += (steer * 1.25 - g.turn) * Math.min(1, dt * 5);
+  g.heading = Math.max(-1.2, Math.min(1.2, g.heading + g.turn * dt));
+  g.dir += (g.heading - g.dir) * Math.min(1, dt * 3.2);
+  g.vx = Math.sin(g.dir) * g.speed;
   g.x += g.vx * dt;
-  g.y += g.speed * dt;
+  g.y += Math.cos(g.dir) * g.speed * dt;
   // rider leans into the turn, a little behind the steering input
   g.lean += (steer - g.lean) * Math.min(1, dt * 4);
 
   const c = centerAt(g.level, g.y);
   const maxOff = extentAt(g.level, g.y);
-  if (g.x > c + maxOff) { g.x = c + maxOff; g.vx = Math.min(g.vx, 0); }
-  if (g.x < c - maxOff) { g.x = c - maxOff; g.vx = Math.max(g.vx, 0); }
+  if ((g.x > c + maxOff && g.dir > 0) || (g.x < c - maxOff && g.dir < 0)) {
+    g.x = Math.max(c - maxOff, Math.min(c + maxOff, g.x));
+    g.heading = 0; g.dir = 0; g.vx = 0;
+  }
 
   g.camX += (g.x - g.camX) * Math.min(1, dt * 5);
   // the camera turns with the sled so it is always seen from straight behind
-  g.yaw += (Math.atan2(g.vx, g.speed) - g.yaw) * Math.min(1, dt * 6);
+  g.yaw += (g.dir - g.yaw) * Math.min(1, dt * 6);
   g.invuln = Math.max(0, g.invuln - dt);
   g.shake = Math.max(0, g.shake - dt);
 
@@ -142,6 +165,7 @@ export function update(g: Game, dt: number, steerIn: number): Phase {
   }
   g.spray = g.spray.filter((p) => p.life > 0);
 
+  updateAnimals(g, dt);
   if (!finishing && g.invuln <= 0 && collide(g)) hit(g);
 
   if (!finishing) {
