@@ -1,13 +1,13 @@
 import type { LevelDef } from './types';
 
-// Roughly 100 seconds when driven without crashing (440 -> 520 -> 600 units/s).
+// Roughly 100 seconds when driven without crashing (560 -> 662 -> 764 units/s).
 // Streams sit on the straight peaks of the curves so the bridge can be lined up in time.
 const level1: LevelDef = {
   id: 'level1',
   name: 'Spruce Trail',
   seed: 1337,
   length: 51000,
-  startSpeed: 440,
+  startSpeed: 560,
   path: [
     [-800, 0], [0, 0], [1500, 0], [2700, 300], [3900, -100], [5000, -350], [6200, -60],
     [7500, 280], [8800, -50], [10000, -300], [11300, 100], [12600, 380], [13700, 150],
@@ -41,8 +41,8 @@ const level1: LevelDef = {
     { y: 47600, kind: 'raccoon', dir: -1, at: -10 },
   ],
   speedUps: [
-    { y: 17000, speed: 520 },
-    { y: 34000, speed: 600 },
+    { y: 17000, speed: 662 },
+    { y: 34000, speed: 764 },
   ],
 };
 

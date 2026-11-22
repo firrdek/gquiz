@@ -127,9 +127,9 @@ export function update(g: Game, dt: number, steerIn: number): Phase {
 
   // Flat snow: steering turns the sled and it keeps pointing that way when released.
   // The turn rate and the direction of travel both lag a little (snow drift).
-  g.turn += (steer * 1.25 - g.turn) * Math.min(1, dt * 5);
+  g.turn += (steer * 1.25 - g.turn) * Math.min(1, dt * 7);
   g.heading = Math.max(-1.2, Math.min(1.2, g.heading + g.turn * dt));
-  g.dir += (g.heading - g.dir) * Math.min(1, dt * 3.2);
+  g.dir += (g.heading - g.dir) * Math.min(1, dt * 6);
   g.vx = Math.sin(g.dir) * g.speed;
   g.x += g.vx * dt;
   g.y += Math.cos(g.dir) * g.speed * dt;

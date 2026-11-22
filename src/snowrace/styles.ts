@@ -76,3 +76,28 @@ export const homeLink = {
   textDecoration: 'none',
   zIndex: 5,
 } as const;
+
+export const muteBtn = {
+  position: 'absolute',
+  top: 12,
+  left: 'calc(50% + 62px)',
+  background: 'rgba(0,0,0,0.3)',
+  border: 'none',
+  borderRadius: 8,
+  padding: '2px 8px',
+  fontSize: 14,
+  cursor: 'pointer',
+  zIndex: 5,
+} as const;
+
+export const versionStyle = {
+  position: 'absolute',
+  right: 10,
+  bottom: 8,
+  fontSize: 12,
+  fontFamily: 'monospace',
+  color: '#fff',
+  opacity: 0.6,
+  pointerEvents: 'none',
+  zIndex: 5,
+} as const;

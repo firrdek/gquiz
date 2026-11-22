@@ -6,6 +6,7 @@ import type { Game, Phase } from './snowrace/engine';
 import { LEVELS } from './snowrace/levels';
 import { render } from './snowrace/render';
 import Overlays from './snowrace/Overlays';
+import { isMuted, setEngine, setMusicLevel, setMuted, startAudio, stopAudio } from './snowrace/audio';
 
 function SnowRace() {
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -24,6 +25,7 @@ function SnowRace() {
     const v = localStorage.getItem(bestKey);
     return v ? Number(v) : null;
   });
+  const [muted, setMutedState] = useState(isMuted());
   const [pressed, setPressed] = useState({ left: false, right: false });
 
   const syncInput = useCallback(() => {
@@ -42,6 +44,8 @@ function SnowRace() {
     const lw = old?.lw ?? (el ? el.clientWidth : 400);
     const lh = old?.lh ?? (el ? el.clientHeight : 800);
     gameRef.current = newGame(levelRef.current, lw, lh);
+    startAudio();
+    setMusicLevel(1);
     phaseRef.current = 'playing';
     setPhase('playing');
   }, []);
@@ -87,9 +91,12 @@ function SnowRace() {
       if (g) {
         if (phaseRef.current === 'playing') {
           const s = steerRef.current;
+          setEngine(g.speed, g.finishTime !== null ? Math.min(1, g.speed / 200) : 1);
           const next = update(g, dt, (s.right ? 1 : 0) - (s.left ? 1 : 0));
           if (next !== 'playing') {
             phaseRef.current = next;
+            setEngine(0, 0);
+            setMusicLevel(next === 'finished' ? 0.6 : 0.25);
             const time = g.finishTime ?? g.time;
             setResult({ meters: meters(g), time });
             if (next === 'finished') {
@@ -123,6 +130,7 @@ function SnowRace() {
     raf = requestAnimationFrame(loop);
     return () => {
       cancelAnimationFrame(raf);
+      stopAudio();
       window.removeEventListener('resize', resize);
     };
   }, []);
@@ -187,7 +195,10 @@ function SnowRace() {
       }}
     >
       <canvas ref={canvasRef} style={{ width: '100%', height: '100%', display: 'block' }} />
-      <Overlays phase={phase} pressed={pressed} result={result} best={best} onStart={start} />
+      <Overlays
+        muted={muted}
+        onToggleMute={() => { setMuted(!muted); setMutedState(!muted); }}
+        phase={phase} pressed={pressed} result={result} best={best} onStart={start} />
     </div>
   );
 }

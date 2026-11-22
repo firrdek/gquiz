@@ -1,7 +1,7 @@
 import type { PointerEvent as ReactPointerEvent } from 'react';
 import type { Phase } from './engine';
 import SnowmobileIcon from './SnowmobileIcon';
-import { arrowStyle, bigBtn, btnBase, homeLink, overlayBox, sideLabel } from './styles';
+import { arrowStyle, bigBtn, btnBase, homeLink, muteBtn, overlayBox, sideLabel, versionStyle } from './styles';
 
 interface Props {
   phase: Phase;
@@ -9,11 +9,13 @@ interface Props {
   result: { meters: number; time: number };
   best: number | null;
   onStart: () => void;
+  muted: boolean;
+  onToggleMute: () => void;
 }
 
 const stop = (e: ReactPointerEvent) => e.stopPropagation();
 
-function Overlays({ phase, pressed, result, best, onStart }: Props) {
+function Overlays({ phase, pressed, result, best, onStart, muted, onToggleMute }: Props) {
   return (
     <>
       {phase === 'playing' && (
@@ -50,6 +52,10 @@ function Overlays({ phase, pressed, result, best, onStart }: Props) {
       )}
 
       <a href="#" onPointerDown={stop} style={homeLink}>← HOME</a>
+      <button onPointerDown={stop} onClick={onToggleMute} style={muteBtn} aria-label="Toggle sound">
+        {muted ? '🔇' : '🔊'}
+      </button>
+      <div style={versionStyle}>{__APP_VERSION__}</div>
 
       {phase === 'menu' && (
         <div style={overlayBox} onPointerDown={stop}>
