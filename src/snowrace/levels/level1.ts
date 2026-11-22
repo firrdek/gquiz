@@ -1,12 +1,12 @@
 import type { LevelDef } from './types';
 
-// Roughly 100 seconds when driven without crashing (560 -> 662 -> 764 units/s).
+// Roughly 100 seconds when driven without crashing (560 -> 662 -> 764 -> 866 units/s).
 // Streams sit on the straight peaks of the curves so the bridge can be lined up in time.
 const level1: LevelDef = {
   id: 'level1',
   name: 'Spruce Trail',
   seed: 1337,
-  length: 51000,
+  length: 66300,
   startSpeed: 560,
   path: [
     [-800, 0], [0, 0], [1500, 0], [2700, 300], [3900, -100], [5000, -350], [6200, -60],
@@ -15,7 +15,10 @@ const level1: LevelDef = {
     [22600, 300], [23900, 60], [25100, -260], [26300, 50], [27600, 350], [28800, 80],
     [30100, -300], [31300, -60], [32500, 260], [33800, -100], [35000, -340], [36300, -30],
     [37600, 290], [38800, 40], [40000, -280], [41400, 0], [42600, 330], [43800, 100],
-    [45000, -250], [46300, -50], [47500, 250], [48800, 60], [50000, 0], [51000, 0], [53000, 0],
+    [45000, -250], [46300, -50], [47500, 250], [48800, 60], [50000, 0], [51000, 0],
+    [52300, 0], [53600, 380], [54900, -40], [56130, 390], [57410, -80],
+    [58700, 280], [60000, -40], [61300, 260], [62600, 20], [63900, 220],
+    [64900, 0], [66300, 0], [68300, 0],
   ],
   streams: [
     { y: 4955, len: 90, bridgeOff: 0 },
@@ -23,6 +26,8 @@ const level1: LevelDef = {
     { y: 25055, len: 90, bridgeOff: -20 },
     { y: 34955, len: 90, bridgeOff: 0 },
     { y: 44955, len: 90, bridgeOff: 15 },
+    { y: 53555, len: 90, bridgeOff: -20 },
+    { y: 64855, len: 90, bridgeOff: 20 },
   ],
   splits: [
     { y0: 7800, y1: 12400, sep: 200 },
@@ -31,6 +36,9 @@ const level1: LevelDef = {
   narrows: [
     { y0: 17000, y1: 19200, half: 72 },
     { y0: 41200, y1: 43600, half: 66 },
+    { y0: 51100, y1: 53100, half: 74 },
+    { y0: 59500, y1: 61900, half: 66 },
+    { y0: 62800, y1: 64200, half: 72 },
   ],
   animals: [
     { y: 2400, kind: 'fox', dir: 1, at: 20 },
@@ -39,10 +47,12 @@ const level1: LevelDef = {
     { y: 22400, kind: 'raccoon', dir: 1, at: -10 },
     { y: 37200, kind: 'fox', dir: 1, at: 15 },
     { y: 47600, kind: 'raccoon', dir: -1, at: -10 },
+    { y: 58000, kind: 'raccoon', dir: -1, at: -15 },
   ],
   speedUps: [
     { y: 17000, speed: 662 },
     { y: 34000, speed: 764 },
+    { y: 58700, speed: 866 },
   ],
 };
 
